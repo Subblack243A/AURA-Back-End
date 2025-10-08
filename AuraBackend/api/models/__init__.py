@@ -1,3 +1,5 @@
+# importing tables from the database to perform migrations
+
 from .tables.dictionary_emotion_model import DictionaryEmotion
 from .tables.dictionary_faculty_model import DictionaryFaculty
 from .tables.dictionary_program_model import DictionaryProgram

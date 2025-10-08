@@ -11,14 +11,24 @@ services:
     depends_on:
       - db
   db:
-      image: postgres:16
+      build:
+        context: ./postgres
+
+      restart: always
+
       environment:
         POSTGRES_DB: auraDb
         POSTGRES_USER: auraUser
         POSTGRES_PASSWORD: naruto77
+      
       volumes:
         - pgdata:/var/lib/postgresql/data
+        - ./postgres/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
+      
+      command: postgres -c config_file=/var/lib/postgresql/data/postgresql.conf
+      
       ports:
         - "5432:5432"
+
 volumes:
   pgdata:
