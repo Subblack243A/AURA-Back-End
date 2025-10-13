@@ -1,6 +1,6 @@
 from django.db import models
 
-class User(models.Model):
+class UserModel(models.Model):
     ID_User = models.AutoField(primary_key=True)
     FK_Role = models.ForeignKey('DictionaryRole', on_delete=models.CASCADE)
     UserName = models.CharField(max_length=100, unique=True)
