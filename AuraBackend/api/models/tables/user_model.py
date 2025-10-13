@@ -2,7 +2,7 @@ from django.db import models
 
 class UserModel(models.Model):
     ID_User = models.AutoField(primary_key=True)
-    FK_Role = models.ForeignKey('DictionaryRole', on_delete=models.CASCADE)
+    FK_Role = models.ForeignKey('DictionaryRoleModel', on_delete=models.CASCADE)
     UserName = models.CharField(max_length=100, unique=True)
     FK_Program = models.ForeignKey('DictionaryProgramModel', on_delete=models.CASCADE)
     Email = models.EmailField(unique=True)
