@@ -21,24 +21,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = { 'password': {'write_only': True} }
         
     def create(self, validated_data):
-        role_data = validated_data.pop('FK_Role')
-        program_data = validated_data.pop('FK_Program')
-        faculty_data = validated_data.pop('FK_Faculty')
-        
-        date_of_birth_data = validated_data.get('DateOfBirth')
-        data_auth_data = validated_data.get('DataAuth')
-        semester_data = validated_data.get('Semester')
-        healthcare_professional_data = validated_data.get('FK_HealthcareProfessional', None)
-        
         user = UserModel.objects.create_user(**validated_data)
         
-        user.FK_Role = role_data
-        user.FK_Program = program_data
-        user.FK_Faculty = faculty_data
-        user.DateOfBirth = date_of_birth_data
-        user.DataAuth = data_auth_data
-        user.Semester = semester_data
-        user.FK_HealthcareProfessional = healthcare_professional_data
-
         user.save()
         return user
