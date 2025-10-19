@@ -1,6 +1,16 @@
-asgiref==3.9.2
-Django==5.2.6
-djangorestframework==3.16.1
-psycopg2-binary==2.9.10
-python-dotenv==1.1.1
-sqlparse==0.5.3
+-i https://pypi.org/simple
+asgiref==3.10.0; python_version >= '3.9'
+attrs==25.4.0; python_version >= '3.9'
+django==5.2.7; python_version >= '3.10'
+djangorestframework==3.16.1; python_version >= '3.9'
+drf-spectacular==0.28.0; python_version >= '3.7'
+inflection==0.5.1; python_version >= '3.5'
+jsonschema==4.25.1; python_version >= '3.9'
+jsonschema-specifications==2025.9.1; python_version >= '3.9'
+psycopg2-binary==2.9.11; python_version >= '3.9'
+python-dotenv==1.1.1; python_version >= '3.9'
+pyyaml==6.0.3; python_version >= '3.8'
+referencing==0.37.0; python_version >= '3.10'
+rpds-py==0.27.1; python_version >= '3.9'
+sqlparse==0.5.3; python_version >= '3.8'
+uritemplate==4.2.0; python_version >= '3.9'

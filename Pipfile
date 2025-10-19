@@ -7,6 +7,7 @@ name = "pypi"
 djangorestframework = "*"
 python-dotenv = "*"
 psycopg2-binary = "*"
+drf-spectacular = "*"
 
 [dev-packages]
 
