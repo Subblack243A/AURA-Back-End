@@ -8,6 +8,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     FK_Program = serializers.PrimaryKeyRelatedField(queryset=UserModel.FK_Program.get_queryset())
     FK_Faculty = serializers.PrimaryKeyRelatedField(queryset=UserModel.FK_Faculty.get_queryset())
     FK_HealthcareProfessional = serializers.PrimaryKeyRelatedField(queryset=UserModel.FK_HealthcareProfessional.get_queryset(), allow_null=True, required=False)
+    confirm_password = serializers.CharField(write_only=True)
     
     class Meta:
         
@@ -15,12 +16,17 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         
         fields = [
             'username', 'email', 'password', 'first_name', 'last_name', 'DateOfBirth', 'DataAuth', 'Semester',
-            'FK_Role', 'FK_Program', 'FK_Faculty', 'FK_HealthcareProfessional'
+            'FK_Role', 'FK_Program', 'FK_Faculty', 'FK_HealthcareProfessional', 'confirm_password'
         ]
-        
         extra_kwargs = { 'password': {'write_only': True} }
         
+    def validate(self, data):
+        if data['password'] != data['confirm_password']:
+            raise serializers.ValidationError("Passwords do not match.")
+        return data
+        
     def create(self, validated_data):
+        validated_data.pop('confirm_password', None)
         user = UserModel.objects.create_user(**validated_data)
         
         user.save()
