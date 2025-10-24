@@ -7,3 +7,4 @@ class UserViewSet(viewsets.ModelViewSet):
     
     queryset = UserModel.objects.all().order_by('ID_User')
     serializer_class = UserRegisterSerializer
+    http_method_names = ['get', 'post']

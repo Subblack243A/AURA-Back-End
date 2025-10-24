@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'api',
     'drf_spectacular',
 ]
@@ -135,4 +136,8 @@ AUTH_USER_MODEL = 'api.UserModel'  # Custom user model
 REST_FRAMEWORK = {
     # Usa drf_spectacular para mostrar la documentacion con swagger
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # Autentificación por Tokens
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication', # <-- AÑADE ESTA LÍNEA
+    ]
 }
