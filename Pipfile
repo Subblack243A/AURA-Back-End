@@ -9,6 +9,8 @@ python-dotenv = "*"
 psycopg2-binary = "*"
 drf-spectacular = "*"
 pgvector = "*"
+deepface = "*"
+pillow = "*"
 
 [dev-packages]
 
