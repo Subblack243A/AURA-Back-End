@@ -14,9 +14,10 @@ class BiometricRegistrationView(APIView):
     Endpoint para registrar un embedding facial para un usuario.
     """
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = BiometricRegistrationSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = BiometricRegistrationSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             try:
                 image_file = serializer.validated_data['image']
@@ -54,9 +55,10 @@ class BiometricRecognitionView(APIView):
     Endpoint para reconocer un usuario a partir de una imagen facial y analizar emociones.
     """
     permission_classes = [permissions.AllowAny] # Puede ser abierto o restringido dependiendo del caso de uso
+    serializer_class = BiometricRecognitionSerializer
 
     def post(self, request, *args, **kwargs):
-        serializer = BiometricRecognitionSerializer(data=request.data)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             try:
                 image_file = serializer.validated_data['image']
