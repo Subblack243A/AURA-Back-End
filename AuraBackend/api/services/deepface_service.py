@@ -53,8 +53,8 @@ class DeepFaceService:
     @staticmethod
     def analyze_emotion(img_array):
         """
-        Analiza las emociones y retorna la emoción predominante.
-        Returns: la emoción predominante como una cadena de texto.
+        Analiza las emociones y retorna un diccionario con los porcentajes de cada emoción.
+        Returns: diccionario JSON con emociones en español y sus porcentajes.
         """
         try:
             analysis_objs = DeepFace.analyze(
@@ -65,11 +65,41 @@ class DeepFaceService:
             )
             
             if not analysis_objs:
-                return "neutral" # Valor por defecto
+                return {}
                 
-            # Retorna la emoción predominante del primer rostro encontrado
-            return analysis_objs[0]['dominant_emotion']
+            # Retorna el análisis del primer rostro encontrado
+            emotions = analysis_objs[0]['emotion']
+            
+            # Mapeo de emociones a español
+            translation_map = {
+                'happy': 'feliz',
+                'sad': 'triste',
+                'angry': 'enojado',
+                'surprise': 'sorpresa',
+                'fear': 'miedo',
+                'disgust': 'disgusto',
+                'neutral': 'neutral'
+            }
+            
+            # Construir el resultado traducido
+            result = {}
+            for en_key, es_key in translation_map.items():
+                if en_key in emotions:
+                    result[es_key] = emotions[en_key]
+                else:
+                    result[es_key] = 0.0
+                    
+            return result
             
         except Exception:
-            # Si el análisis de emociones falla, retorna "unknown" de manera grácil en lugar de bloquear el flujo de autenticación
-            return "unknown"
+            # En caso de error, retornar estructura vacía o default
+            # Se podría loguear el error aquí
+            return {
+                'feliz': 0.0,
+                'triste': 0.0,
+                'enojado': 0.0,
+                'sorpresa': 0.0,
+                'miedo': 0.0,
+                'disgusto': 0.0,
+                'neutral': 0.0
+            }
