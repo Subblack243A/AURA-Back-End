@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'api',
     'drf_spectacular',
+    'pgvector.django',
 ]
 
 MIDDLEWARE = [

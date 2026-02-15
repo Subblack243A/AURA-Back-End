@@ -8,6 +8,11 @@ djangorestframework = "*"
 python-dotenv = "*"
 psycopg2-binary = "*"
 drf-spectacular = "*"
+pgvector = "*"
+deepface = "*"
+pillow = "*"
+tensorflow = "*"
+tf-keras = "*"
 
 [dev-packages]
 
