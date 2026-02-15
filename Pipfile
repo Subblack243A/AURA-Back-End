@@ -11,6 +11,8 @@ drf-spectacular = "*"
 pgvector = "*"
 deepface = "*"
 pillow = "*"
+tensorflow = "*"
+tf-keras = "*"
 
 [dev-packages]
 
