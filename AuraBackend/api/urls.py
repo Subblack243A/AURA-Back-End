@@ -4,6 +4,7 @@ from api.views.user_viewset import UserViewSet
 from api.views.user_api_view import UserView
 from api.views.user_login_view import UserLoginView
 from api.views.biometric_view import BiometricRegistrationView, BiometricRecognitionView
+from api.views.emotion_view import EmotionRegisterView
 
 router = routers.DefaultRouter()
 
@@ -17,4 +18,6 @@ urlpatterns = [
     # Biometric Endpoints
     path('biometric/register/', BiometricRegistrationView.as_view(), name='biometric-register'),
     path('biometric/recognize/', BiometricRecognitionView.as_view(), name='biometric-recognize'),
+    # Emotion Endpoints
+    path('emotion/register/', EmotionRegisterView.as_view(), name='emotion-register'),
 ]
