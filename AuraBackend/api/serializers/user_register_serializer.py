@@ -27,6 +27,28 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         
     def create(self, validated_data):
         validated_data.pop('confirm_password', None)
+        
+        # Logica de roles
+        role = validated_data.get('FK_Role')
+        if role:
+            # ID 3: Health Professional
+            if role.ID_Role == 3:
+                # Reassign to ID 1: Inactive
+                from api.models.tables.dictionary_role_model import DictionaryRoleModel
+                try:
+                    inactive_role = DictionaryRoleModel.objects.get(ID_Role=1)
+                    validated_data['FK_Role'] = inactive_role
+                except DictionaryRoleModel.DoesNotExist:
+                    raise serializers.ValidationError({"FK_Role": "Inactive role (ID 1) configuration missing."})
+            
+            # ID 2: Estudiante
+            elif role.ID_Role == 2:
+                pass # Allow registration
+            
+            # Cualquier otro rol (ej. Admin) está prohibido mediante registro público
+            else:
+                 raise serializers.ValidationError({"FK_Role": "Invalid role selected for registration."})
+
         user = UserModel.objects.create_user(**validated_data)
         
         user.save()
