@@ -13,6 +13,13 @@ class IsAdminUserRole(permissions.BasePermission):
     def has_permission(self, request, view):
         return RoleConfirmationService.is_admin(request.user)
 
+class IsHealthcareProfessionalRole(permissions.BasePermission):
+    """
+    Permiso personalizado que delega la lógica al RoleConfirmationService.
+    """
+    def has_permission(self, request, view):
+        return RoleConfirmationService.is_healthcare_professional(request.user)
+
 class AdminReportView(APIView):
     """
     Vista para generar reportes generales de emociones para el administrador.
@@ -60,4 +67,43 @@ class AdminReportView(APIView):
             'report_name': 'Reporte General de Emociones',
             'manual_registrations': manual_data,
             'facial_recognition_dominance': facial_data
+        }, status=status.HTTP_200_OK)
+
+class UserSpecificReportView(APIView):
+    """
+    Vista para generar reportes específicos por usuario para el Profesional de la Salud.
+    Calcula el promedio de porcentajes de cada emoción en los reconocimientos faciales.
+    """
+    permission_classes = [IsHealthcareProfessionalRole]
+
+    def get(self, request, user_id, *args, **kwargs):
+        # Obtener todos los registros de reconocimiento para el usuario especificado
+        recognition_records = RecognitionModel.objects.filter(FK_User_id=user_id)
+        
+        if not recognition_records.exists():
+            return Response(
+                {"error": "No recognition records found for this user"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Inicializamos acumuladores para las 7 emociones estándar
+        totals = {
+            'feliz': 0.0, 'triste': 0.0, 'enojado': 0.0, 'sorpresa': 0.0, 
+            'miedo': 0.0, 'disgusto': 0.0, 'neutral': 0.0
+        }
+        count = recognition_records.count()
+
+        for record in recognition_records:
+            results = record.RecognitionResults
+            if results and isinstance(results, dict):
+                for emotion in totals.keys():
+                    totals[emotion] += results.get(emotion, 0.0)
+
+        # Calculamos los promedios
+        averages = {emotion: total / count for emotion, total in totals.items()}
+
+        return Response({
+            'user_id': user_id,
+            'total_records': count,
+            'emotion_averages': averages
         }, status=status.HTTP_200_OK)
