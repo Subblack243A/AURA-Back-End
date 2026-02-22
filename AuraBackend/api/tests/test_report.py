@@ -105,9 +105,17 @@ class AdminReportTest(TestCase):
         # Record 1: feliz 90, triste 10
         # Record 2: feliz 10, triste 80
         # Promedios: feliz (90+10)/2 = 50, triste (10+80)/2 = 45
-        self.assertEqual(response.data['emotion_averages']['feliz'], 50.0)
-        self.assertEqual(response.data['emotion_averages']['triste'], 45.0)
-        self.assertEqual(response.data['total_records'], 2)
+        self.assertEqual(response.data['facial_emotion_averages']['feliz'], 50.0)
+        self.assertEqual(response.data['facial_emotion_averages']['triste'], 45.0)
+        self.assertEqual(response.data['total_facial_records'], 2)
+        
+        # Verificar porcentajes manuales
+        # regular_user tiene 2 feliz, 1 triste (de setUp). Total = 3
+        # feliz: (2/3)*100 = 66.666...
+        # triste: (1/3)*100 = 33.333...
+        self.assertAlmostEqual(response.data['manual_registration_percentages']['feliz'], 66.66666666666666)
+        self.assertAlmostEqual(response.data['manual_registration_percentages']['triste'], 33.33333333333333)
+        self.assertEqual(response.data['total_manual_records'], 3)
 
     def test_user_report_access_denied_admin(self):
         """Test que un administrador no puede acceder al reporte de usuario (según lógica actual)"""
