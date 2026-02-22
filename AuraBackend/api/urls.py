@@ -5,7 +5,7 @@ from api.views.user_api_view import UserView
 from api.views.user_login_view import UserLoginView
 from api.views.biometric_view import BiometricRegistrationView, BiometricRecognitionView
 from api.views.emotion_view import EmotionRegisterView
-from api.views.report_view import AdminReportView
+from api.views.report_view import AdminReportView, UserSpecificReportView
 
 router = routers.DefaultRouter()
 
@@ -23,4 +23,5 @@ urlpatterns = [
     path('emotion/register/', EmotionRegisterView.as_view(), name='emotion-register'),
     # Report Endpoints
     path('reports/general/', AdminReportView.as_view(), name='report-general'),
+    path('reports/user/<int:user_id>/', UserSpecificReportView.as_view(), name='report-user'),
 ]
