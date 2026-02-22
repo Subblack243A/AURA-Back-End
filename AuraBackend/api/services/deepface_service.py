@@ -33,7 +33,6 @@ class DeepFaceService:
         """
         try:
             # represent() devuelve una lista de diccionarios. Tomamos el primer rostro encontrado.
-            # Usando enforce_detection=True (default) aseguramos que si no se detecta un rostro, se lance una excepción.
             embedding_objs = DeepFace.represent(
                 img_path=img_array,
                 model_name="ArcFace",
@@ -44,14 +43,41 @@ class DeepFaceService:
             if not embedding_objs:
                 raise ValidationError("No se detectó ningún rostro en la imagen.")
 
-            # Retorna el embedding del primer rostro encontrado
-            return embedding_objs[0]["embedding"]
+            # Retorna el embedding del primer rostro encontrado como lista
+            return list(embedding_objs[0]["embedding"])
             
         except ValueError as e:
-            # DeepFace lanza ValueError si no se detecta un rostro cuando enforce_detection=True
             raise ValidationError(f"Face detection failed: {str(e)}")
         except Exception as e:
             raise ValidationError(f"Error generating embedding: {str(e)}")
+
+    @staticmethod
+    def verify_face(embedding_a, embedding_b, threshold=0.68):
+        """
+        Compara dos embeddings usando la distancia del coseno.
+        ArcFace con distancia del coseno suele usar un umbral de ~0.68.
+        Si la distancia es menor al umbral, se considera la misma persona.
+        """
+        try:
+            # Convertir a numpy arrays para el cálculo
+            a = np.array(embedding_a)
+            b = np.array(embedding_b)
+            
+            # Calcular similitud del coseno
+            # Cosine distance = 1 - ( (a . b) / (||a|| * ||b||) )
+            dot_product = np.dot(a, b)
+            norm_a = np.linalg.norm(a)
+            norm_b = np.linalg.norm(b)
+            
+            cosine_similarity = dot_product / (norm_a * norm_b)
+            cosine_distance = 1 - cosine_similarity
+            
+            print(f"DEBUG: Face verification - Cosine Distance: {cosine_distance:.4f} (Threshold: {threshold})")
+            
+            return cosine_distance <= threshold
+        except Exception as e:
+            print(f"Error verifying face: {str(e)}")
+            return False
 
     @staticmethod
     def analyze_emotion(img_array):

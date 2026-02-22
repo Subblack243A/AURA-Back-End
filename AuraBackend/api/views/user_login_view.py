@@ -47,17 +47,29 @@ class UserLoginView(APIView):
                     )
 
                 try:
-                    # 2. Procesar imagen
+                    # 2. Procesar imagen para obtener embedding
                     image_file = request.FILES['image']
                     img_array = DeepFaceService.process_image(image_file)
+                    new_embedding = DeepFaceService.get_embedding(img_array)
                     
-                    # 3. Registro facial automático si no existe
-                    if not user.Face:
-                        embedding = DeepFaceService.get_embedding(img_array)
-                        user.Face = embedding
+                    # 3. Comprobar si el usuario ya tiene un rostro registrado
+                    # Usar "is None" explícitamente para evitar ambigüedad de array
+                    if user.Face is None:
+                        # Registro inicial: Guardar el embedding
+                        user.Face = new_embedding
                         user.save()
+                        print(f"DEBUG: Initial face registration for user {user.username}")
+                    else:
+                        # Verificación obligatoria
+                        is_verified = DeepFaceService.verify_face(new_embedding, user.Face)
+                        if not is_verified:
+                            return Response(
+                                {'error': 'Autenticación facial fallida. Rostro no reconocido.'},
+                                status=status.HTTP_401_UNAUTHORIZED
+                            )
+                        print(f"DEBUG: Face verified successfully for user {user.username}")
 
-                    # 4. Analizar emociones
+                    # 4. Una vez verificado (o registrado), ahora sí analizar emociones
                     emotion_results = DeepFaceService.analyze_emotion(img_array)
                     
                     # 5. Guardar foto en el dataset categorizado por emoción
@@ -75,13 +87,14 @@ class UserLoginView(APIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 except Exception as e:
-                    # Log error ideally
+                    import traceback
+                    traceback.print_exc()
                     return Response(
-                        {'error': 'Error processing emotion analysis'},
+                        {'error': f'Error processing emotion analysis: {str(e)}'},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
                 
-                # 5. Generar token y respuesta exitosa
+                # 7. Generar token y respuesta exitosa
                 token, created = Token.objects.get_or_create(user=user)
                 return Response(
                     {
