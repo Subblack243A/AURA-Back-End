@@ -110,12 +110,16 @@ class UserSpecificReportView(APIView):
                 'Ejemplo de Reporte de Usuario',
                 value={
                     'user_id': 1,
-                    'total_records': 5,
-                    'emotion_averages': {
+                    'total_facial_records': 5,
+                    'facial_emotion_averages': {
                         'feliz': 45.5,
                         'triste': 10.2,
                         'enojado': 5.1,
                         'neutral': 39.2
+                    },
+                    'manual_registration_percentages': {
+                        'feliz': 80.0,
+                        'triste': 20.0
                     }
                 },
                 response_only=True,
@@ -123,33 +127,52 @@ class UserSpecificReportView(APIView):
         ]
     )
     def get(self, request, user_id, *args, **kwargs):
-        # Obtener todos los registros de reconocimiento para el usuario especificado
+        # 1. Procesar Reconocimientos Faciales (Averages)
         recognition_records = RecognitionModel.objects.filter(FK_User_id=user_id)
         
-        if not recognition_records.exists():
+        facial_averages = {}
+        facial_count = 0
+        
+        if recognition_records.exists():
+            totals = {
+                'feliz': 0.0, 'triste': 0.0, 'enojado': 0.0, 'sorpresa': 0.0, 
+                'miedo': 0.0, 'disgusto': 0.0, 'neutral': 0.0
+            }
+            facial_count = recognition_records.count()
+
+            for record in recognition_records:
+                results = record.RecognitionResults
+                if results and isinstance(results, dict):
+                    for emotion in totals.keys():
+                        totals[emotion] += results.get(emotion, 0.0)
+
+            facial_averages = {emotion: total / facial_count for emotion, total in totals.items()}
+
+        # 2. Procesar Registros Manuales (Percentages)
+        manual_records = EmotionRegisterModel.objects.filter(FK_User_id=user_id)
+        manual_count = manual_records.count()
+        manual_percentages = {}
+
+        if manual_count > 0:
+            register_counts = manual_records.values(
+                'FK_Emotion__Emotion'
+            ).annotate(count=Count('FK_Emotion'))
+            
+            manual_percentages = {
+                item['FK_Emotion__Emotion']: (item['count'] / manual_count) * 100 
+                for item in register_counts
+            }
+
+        if not recognition_records.exists() and not manual_records.exists():
             return Response(
-                {"error": "No recognition records found for this user"},
+                {"error": "No records found for this user"},
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        # Inicializamos acumuladores para las 7 emociones estándar
-        totals = {
-            'feliz': 0.0, 'triste': 0.0, 'enojado': 0.0, 'sorpresa': 0.0, 
-            'miedo': 0.0, 'disgusto': 0.0, 'neutral': 0.0
-        }
-        count = recognition_records.count()
-
-        for record in recognition_records:
-            results = record.RecognitionResults
-            if results and isinstance(results, dict):
-                for emotion in totals.keys():
-                    totals[emotion] += results.get(emotion, 0.0)
-
-        # Calculamos los promedios
-        averages = {emotion: total / count for emotion, total in totals.items()}
-
         return Response({
             'user_id': user_id,
-            'total_records': count,
-            'emotion_averages': averages
+            'total_facial_records': facial_count,
+            'facial_emotion_averages': facial_averages,
+            'total_manual_records': manual_count,
+            'manual_registration_percentages': manual_percentages
         }, status=status.HTTP_200_OK)
