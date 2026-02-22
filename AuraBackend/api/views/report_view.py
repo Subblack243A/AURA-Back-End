@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from drf_spectacular.utils import extend_schema, OpenApiExample
 from django.db.models import Count
 from ..models.tables.emotion_register_model import EmotionRegisterModel
 from ..models.tables.recognition_model import RecognitionModel
@@ -29,6 +30,30 @@ class AdminReportView(APIView):
     """
     permission_classes = [IsAdminUserRole]
 
+    @extend_schema(
+        summary="Cuentas generales de emociones para el administrador",
+        description="Retorna el conteo de cada emoción en registros manuales y la emoción dominante en reconocimientos faciales.",
+        responses={200: dict},
+        examples=[
+            OpenApiExample(
+                'Ejemplo de Reporte General',
+                value={
+                    'report_name': 'Reporte General de Emociones',
+                    'manual_registrations': {
+                        'feliz': 10,
+                        'triste': 5,
+                        'enojado': 2
+                    },
+                    'facial_recognition_dominance': {
+                        'feliz': 8,
+                        'triste': 3,
+                        'neutral': 12
+                    }
+                },
+                response_only=True,
+            )
+        ]
+    )
     def get(self, request, *args, **kwargs):
         # 1. Conteos de EmotionRegisterModel (Registros Manuales)
         # Agrupamos por el nombre de la emoción en el diccionario
@@ -76,6 +101,27 @@ class UserSpecificReportView(APIView):
     """
     permission_classes = [IsHealthcareProfessionalRole]
 
+    @extend_schema(
+        summary="Promedio de emociones por usuario",
+        description="Calcula el promedio de cada emoción para un usuario específico basado en sus registros de reconocimiento facial.",
+        responses={200: dict},
+        examples=[
+            OpenApiExample(
+                'Ejemplo de Reporte de Usuario',
+                value={
+                    'user_id': 1,
+                    'total_records': 5,
+                    'emotion_averages': {
+                        'feliz': 45.5,
+                        'triste': 10.2,
+                        'enojado': 5.1,
+                        'neutral': 39.2
+                    }
+                },
+                response_only=True,
+            )
+        ]
+    )
     def get(self, request, user_id, *args, **kwargs):
         # Obtener todos los registros de reconocimiento para el usuario especificado
         recognition_records = RecognitionModel.objects.filter(FK_User_id=user_id)
