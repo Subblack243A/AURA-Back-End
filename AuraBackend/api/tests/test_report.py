@@ -94,3 +94,31 @@ class AdminReportTest(TestCase):
         self.assertFalse(RoleConfirmationService.is_admin(self.hp_user))
         self.assertTrue(RoleConfirmationService.is_admin(self.admin_user))
         self.assertFalse(RoleConfirmationService.is_healthcare_professional(self.admin_user))
+
+    def test_user_report_access_hp(self):
+        """Test que un profesional de la salud puede acceder al reporte de usuario"""
+        self.client.force_authenticate(user=self.hp_user)
+        response = self.client.get(f'/api/reports/user/{self.regular_user.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Verificar promedios
+        # Record 1: feliz 90, triste 10
+        # Record 2: feliz 10, triste 80
+        # Promedios: feliz (90+10)/2 = 50, triste (10+80)/2 = 45
+        self.assertEqual(response.data['emotion_averages']['feliz'], 50.0)
+        self.assertEqual(response.data['emotion_averages']['triste'], 45.0)
+        self.assertEqual(response.data['total_records'], 2)
+
+    def test_user_report_access_denied_admin(self):
+        """Test que un administrador no puede acceder al reporte de usuario (según lógica actual)"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(f'/api/reports/user/{self.regular_user.id}/')
+        # El permiso IsHealthcareProfessionalRole debería denegar el acceso
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_report_not_found(self):
+        """Test que devuelve 404 si no hay registros para el usuario"""
+        self.client.force_authenticate(user=self.hp_user)
+        # Usuario sin registros (el propio HP no tiene registros en RecognitionModel)
+        response = self.client.get(f'/api/reports/user/{self.hp_user.id}/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
