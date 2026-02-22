@@ -1,7 +1,10 @@
 import numpy as np
 import cv2
+import os
+from datetime import datetime
 from deepface import DeepFace
 from rest_framework.exceptions import ValidationError
+from django.conf import settings
 
 class DeepFaceService:
     @staticmethod
@@ -103,3 +106,57 @@ class DeepFaceService:
                 'disgusto': 0.0,
                 'neutral': 0.0
             }
+
+    @staticmethod
+    def get_dominant_emotion(emotion_results):
+        """
+        Determina la emoción dominante de un diccionario de resultados.
+        Returns: El nombre de la emoción en inglés (para usar como nombre de carpeta).
+        """
+        if not emotion_results:
+            return 'neutral'
+            
+        # Mapeo invertido para volver a inglés
+        reverse_map = {
+            'feliz': 'happy',
+            'triste': 'sad',
+            'enojado': 'angry',
+            'sorpresa': 'surprise',
+            'miedo': 'fear',
+            'disgusto': 'disgust',
+            'neutral': 'neutral'
+        }
+        
+        # Encontrar la clave con el valor máximo
+        dominant_es = max(emotion_results, key=emotion_results.get)
+        return reverse_map.get(dominant_es, 'neutral')
+
+    @staticmethod
+    def save_image_by_emotion(img_array, emotion_results):
+        """
+        Guarda la imagen en la carpeta correspondiente a su emoción dominante.
+        """
+        try:
+            dominant_en = DeepFaceService.get_dominant_emotion(emotion_results)
+            
+            # Ruta base del dataset (ajustada a la estructura del proyecto)
+            # El usuario especificó: /home/subblack/Documentos/DevAura/AURA-Back-End/dataset
+            dataset_path = os.path.join(settings.BASE_DIR, '..', 'dataset')
+            target_dir = os.path.join(dataset_path, dominant_en)
+            
+            # Asegurar que el directorio existe
+            if not os.path.exists(target_dir):
+                os.makedirs(target_dir, exist_ok=True)
+                
+            # Generar nombre de archivo único
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            filename = f"capture_{timestamp}.jpg"
+            file_path = os.path.join(target_dir, filename)
+            
+            # Guardar imagen usando OpenCV
+            cv2.imwrite(file_path, img_array)
+            return file_path
+        except Exception as e:
+            # No bloqueamos el login si falla el guardado de la imagen
+            print(f"Error saving image to dataset: {str(e)}")
+            return None

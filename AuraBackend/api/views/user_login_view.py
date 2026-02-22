@@ -39,17 +39,7 @@ class UserLoginView(APIView):
             user = authenticate(request, username=username, password=password)
             
             if user is not None:
-                # 1. Verificar si el usuario tiene registro facial (embedding)
-                if not user.Face:
-                    return Response(
-                        {
-                            'error': 'Face registration required',
-                            'code': 'FACE_REGISTRATION_REQUIRED'
-                        },
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-
-                # 2. Verificar si se envió la imagen para análisis de emociones
+                # 1. Verificar si se envió la imagen para análisis de emociones
                 if 'image' not in request.FILES:
                     return Response(
                         {'error': 'Image file is required for emotion analysis'},
@@ -57,14 +47,23 @@ class UserLoginView(APIView):
                     )
 
                 try:
-                    # 3. Procesar imagen y analizar emociones
+                    # 2. Procesar imagen
                     image_file = request.FILES['image']
                     img_array = DeepFaceService.process_image(image_file)
                     
-                    # Obtener porcentajes de emociones
+                    # 3. Registro facial automático si no existe
+                    if not user.Face:
+                        embedding = DeepFaceService.get_embedding(img_array)
+                        user.Face = embedding
+                        user.save()
+
+                    # 4. Analizar emociones
                     emotion_results = DeepFaceService.analyze_emotion(img_array)
                     
-                    # 4. Guardar resultados en RecognitionModel
+                    # 5. Guardar foto en el dataset categorizado por emoción
+                    DeepFaceService.save_image_by_emotion(img_array, emotion_results)
+                    
+                    # 6. Guardar resultados en RecognitionModel
                     RecognitionModel.objects.create(
                         RecognitionResults=emotion_results,
                         FK_User=user
