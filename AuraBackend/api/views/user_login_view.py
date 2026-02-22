@@ -39,17 +39,7 @@ class UserLoginView(APIView):
             user = authenticate(request, username=username, password=password)
             
             if user is not None:
-                # 1. Verificar si el usuario tiene registro facial (embedding)
-                if not user.Face:
-                    return Response(
-                        {
-                            'error': 'Face registration required',
-                            'code': 'FACE_REGISTRATION_REQUIRED'
-                        },
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-
-                # 2. Verificar si se envió la imagen para análisis de emociones
+                # 1. Verificar si se envió la imagen para análisis de emociones
                 if 'image' not in request.FILES:
                     return Response(
                         {'error': 'Image file is required for emotion analysis'},
@@ -57,14 +47,35 @@ class UserLoginView(APIView):
                     )
 
                 try:
-                    # 3. Procesar imagen y analizar emociones
+                    # 2. Procesar imagen para obtener embedding
                     image_file = request.FILES['image']
                     img_array = DeepFaceService.process_image(image_file)
+                    new_embedding = DeepFaceService.get_embedding(img_array)
                     
-                    # Obtener porcentajes de emociones
+                    # 3. Comprobar si el usuario ya tiene un rostro registrado
+                    # Usar "is None" explícitamente para evitar ambigüedad de array
+                    if user.Face is None:
+                        # Registro inicial: Guardar el embedding
+                        user.Face = new_embedding
+                        user.save()
+                        print(f"DEBUG: Initial face registration for user {user.username}")
+                    else:
+                        # Verificación obligatoria
+                        is_verified = DeepFaceService.verify_face(new_embedding, user.Face)
+                        if not is_verified:
+                            return Response(
+                                {'error': 'Autenticación facial fallida. Rostro no reconocido.'},
+                                status=status.HTTP_401_UNAUTHORIZED
+                            )
+                        print(f"DEBUG: Face verified successfully for user {user.username}")
+
+                    # 4. Una vez verificado (o registrado), ahora sí analizar emociones
                     emotion_results = DeepFaceService.analyze_emotion(img_array)
                     
-                    # 4. Guardar resultados en RecognitionModel
+                    # 5. Guardar foto en el dataset categorizado por emoción
+                    DeepFaceService.save_image_by_emotion(img_array, emotion_results)
+                    
+                    # 6. Guardar resultados en RecognitionModel
                     RecognitionModel.objects.create(
                         RecognitionResults=emotion_results,
                         FK_User=user
@@ -76,13 +87,14 @@ class UserLoginView(APIView):
                         status=status.HTTP_400_BAD_REQUEST
                     )
                 except Exception as e:
-                    # Log error ideally
+                    import traceback
+                    traceback.print_exc()
                     return Response(
-                        {'error': 'Error processing emotion analysis'},
+                        {'error': f'Error processing emotion analysis: {str(e)}'},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
                 
-                # 5. Generar token y respuesta exitosa
+                # 7. Generar token y respuesta exitosa
                 token, created = Token.objects.get_or_create(user=user)
                 return Response(
                     {
