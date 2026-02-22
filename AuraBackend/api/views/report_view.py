@@ -15,11 +15,14 @@ class IsAdminUserRole(permissions.BasePermission):
         return RoleConfirmationService.is_admin(request.user)
 
 class IsHealthcareProfessionalRole(permissions.BasePermission):
-    """
-    Permiso personalizado que delega la lógica al RoleConfirmationService.
-    """
+    """Permiso para usuarios con rol de Profesional de la Salud."""
     def has_permission(self, request, view):
         return RoleConfirmationService.is_healthcare_professional(request.user)
+
+class IsNotAdminRole(permissions.BasePermission):
+    """Permiso para cualquier usuario autenticado que NO sea administrador."""
+    def has_permission(self, request, view):
+        return (request.user and request.user.is_authenticated) and not RoleConfirmationService.is_admin(request.user)
 
 class AdminReportView(APIView):
     """
@@ -175,4 +178,92 @@ class UserSpecificReportView(APIView):
             'facial_emotion_averages': facial_averages,
             'total_manual_records': manual_count,
             'manual_registration_percentages': manual_percentages
+        }, status=status.HTTP_200_OK)
+
+class UserTimelineReportView(APIView):
+    """
+    Vista para generar una línea de tiempo emocional de los últimos 7 días para un usuario.
+    Combina registros manuales y reconocimientos faciales (emoción dominante).
+    """
+    permission_classes = [IsNotAdminRole]
+
+    @extend_schema(
+        summary="Línea de tiempo emocional de los últimos 7 días",
+        description="Retorna una lista cronológica de emociones capturadas por reconocimiento facial y registros manuales.",
+        responses={200: dict},
+        examples=[
+            OpenApiExample(
+                'Ejemplo de Línea de Tiempo',
+                value={
+                    'user_id': 1,
+                    'timeline': [
+                        {
+                            'timestamp': '2023-10-20T14:30:00Z',
+                            'emotion': 'feliz',
+                            'source': 'facial'
+                        },
+                        {
+                            'timestamp': '2023-10-21T09:15:00Z',
+                            'emotion': 'triste',
+                            'source': 'manual'
+                        }
+                    ]
+                },
+                response_only=True,
+            )
+        ]
+    )
+    def get(self, request, user_id, *args, **kwargs):
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # 1. Definir el rango de tiempo (últimos 7 días)
+        seven_days_ago = timezone.now() - timedelta(days=7)
+
+        # 2. Obtener registros de Reconocimiento Facial
+        facial_records = RecognitionModel.objects.filter(
+            FK_User_id=user_id,
+            dateOfRecognition__gte=seven_days_ago
+        ).order_by('dateOfRecognition')
+
+        timeline = []
+
+        for record in facial_records:
+            results = record.RecognitionResults
+            if results and isinstance(results, dict):
+                try:
+                    dominant_emotion = max(results, key=results.get)
+                    timeline.append({
+                        'timestamp': record.dateOfRecognition,
+                        'emotion': dominant_emotion,
+                        'source': 'facial'
+                    })
+                except (ValueError, TypeError):
+                    continue
+
+        # 3. Obtener registros Manuales
+        manual_records = EmotionRegisterModel.objects.filter(
+            FK_User_id=user_id,
+            EmotionDate__gte=seven_days_ago
+        ).select_related('FK_Emotion').order_by('EmotionDate')
+
+        for record in manual_records:
+            timeline.append({
+                'timestamp': record.EmotionDate,
+                'emotion': record.FK_Emotion.Emotion,
+                'source': 'manual'
+            })
+
+        # 4. Ordenar la línea de tiempo combinada
+        timeline.sort(key=lambda x: x['timestamp'])
+
+        if not timeline:
+            return Response(
+                {"error": "No emotional records found for this user in the last 7 days"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response({
+            'user_id': user_id,
+            'timeline': timeline
         }, status=status.HTTP_200_OK)
