@@ -138,18 +138,18 @@ class AdminReportTest(TestCase):
         response = self.client.get(f'/api/reports/user/{self.regular_user.id}/timeline/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
-        timeline = response.data['timeline']
-        # Debería haber 5 registros (3 manuales + 2 reconocimientos de setUp)
-        self.assertEqual(len(timeline), 5)
+        facial_timeline = response.data['facial_timeline']
+        manual_timeline = response.data['manual_timeline']
         
-        # Verificar que están ordenados cronológicamente
-        for i in range(len(timeline) - 1):
-            self.assertTrue(timeline[i]['timestamp'] <= timeline[i+1]['timestamp'])
-            
-        # Verificar fuentes
-        sources = [item['source'] for item in timeline]
-        self.assertEqual(sources.count('manual'), 3)
-        self.assertEqual(sources.count('facial'), 2)
+        # Verificar conteos (2 faciales, 3 manuales de setUp)
+        self.assertEqual(len(facial_timeline), 2)
+        self.assertEqual(len(manual_timeline), 3)
+        
+        # Verificar que están ordenados cronológicamente por separado
+        for i in range(len(facial_timeline) - 1):
+            self.assertTrue(facial_timeline[i]['timestamp'] <= facial_timeline[i+1]['timestamp'])
+        for i in range(len(manual_timeline) - 1):
+            self.assertTrue(manual_timeline[i]['timestamp'] <= manual_timeline[i+1]['timestamp'])
 
     def test_user_timeline_access_denied_admin(self):
         """Test que un administrador no puede acceder a la línea de tiempo (restricción específica)"""

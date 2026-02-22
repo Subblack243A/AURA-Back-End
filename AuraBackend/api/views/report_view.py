@@ -196,16 +196,16 @@ class UserTimelineReportView(APIView):
                 'Ejemplo de Línea de Tiempo',
                 value={
                     'user_id': 1,
-                    'timeline': [
+                    'facial_timeline': [
                         {
                             'timestamp': '2023-10-20T14:30:00Z',
-                            'emotion': 'feliz',
-                            'source': 'facial'
-                        },
+                            'emotion': 'feliz'
+                        }
+                    ],
+                    'manual_timeline': [
                         {
                             'timestamp': '2023-10-21T09:15:00Z',
-                            'emotion': 'triste',
-                            'source': 'manual'
+                            'emotion': 'triste'
                         }
                     ]
                 },
@@ -226,17 +226,16 @@ class UserTimelineReportView(APIView):
             dateOfRecognition__gte=seven_days_ago
         ).order_by('dateOfRecognition')
 
-        timeline = []
+        facial_timeline = []
 
         for record in facial_records:
             results = record.RecognitionResults
             if results and isinstance(results, dict):
                 try:
                     dominant_emotion = max(results, key=results.get)
-                    timeline.append({
+                    facial_timeline.append({
                         'timestamp': record.dateOfRecognition,
                         'emotion': dominant_emotion,
-                        'source': 'facial'
                     })
                 except (ValueError, TypeError):
                     continue
@@ -247,17 +246,15 @@ class UserTimelineReportView(APIView):
             EmotionDate__gte=seven_days_ago
         ).select_related('FK_Emotion').order_by('EmotionDate')
 
+        manual_timeline = []
+
         for record in manual_records:
-            timeline.append({
+            manual_timeline.append({
                 'timestamp': record.EmotionDate,
                 'emotion': record.FK_Emotion.Emotion,
-                'source': 'manual'
             })
 
-        # 4. Ordenar la línea de tiempo combinada
-        timeline.sort(key=lambda x: x['timestamp'])
-
-        if not timeline:
+        if not facial_timeline and not manual_timeline:
             return Response(
                 {"error": "No emotional records found for this user in the last 7 days"},
                 status=status.HTTP_404_NOT_FOUND
@@ -265,5 +262,6 @@ class UserTimelineReportView(APIView):
 
         return Response({
             'user_id': user_id,
-            'timeline': timeline
+            'facial_timeline': facial_timeline,
+            'manual_timeline': manual_timeline
         }, status=status.HTTP_200_OK)
