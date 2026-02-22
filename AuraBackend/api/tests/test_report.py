@@ -97,6 +97,7 @@ class AdminReportTest(TestCase):
 
     def test_user_report_access_hp(self):
         """Test que un profesional de la salud puede acceder al reporte de usuario"""
+        # Asegurarnos de que hay registros
         self.client.force_authenticate(user=self.hp_user)
         response = self.client.get(f'/api/reports/user/{self.regular_user.id}/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -127,6 +128,31 @@ class AdminReportTest(TestCase):
     def test_user_report_not_found(self):
         """Test que devuelve 404 si no hay registros para el usuario"""
         self.client.force_authenticate(user=self.hp_user)
-        # Usuario sin registros (el propio HP no tiene registros en RecognitionModel)
+        # Usuario sin registros (el propio HP no tiene registros en RecognitionModel ni manuales)
         response = self.client.get(f'/api/reports/user/{self.hp_user.id}/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_user_timeline_access_hp(self):
+        """Test que un profesional de la salud puede acceder a la línea de tiempo"""
+        self.client.force_authenticate(user=self.hp_user)
+        response = self.client.get(f'/api/reports/user/{self.regular_user.id}/timeline/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        timeline = response.data['timeline']
+        # Debería haber 5 registros (3 manuales + 2 reconocimientos de setUp)
+        self.assertEqual(len(timeline), 5)
+        
+        # Verificar que están ordenados cronológicamente
+        for i in range(len(timeline) - 1):
+            self.assertTrue(timeline[i]['timestamp'] <= timeline[i+1]['timestamp'])
+            
+        # Verificar fuentes
+        sources = [item['source'] for item in timeline]
+        self.assertEqual(sources.count('manual'), 3)
+        self.assertEqual(sources.count('facial'), 2)
+
+    def test_user_timeline_access_denied_admin(self):
+        """Test que un administrador no puede acceder a la línea de tiempo (restricción específica)"""
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(f'/api/reports/user/{self.regular_user.id}/timeline/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
