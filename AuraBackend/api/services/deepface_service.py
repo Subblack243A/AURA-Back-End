@@ -114,7 +114,8 @@ class DeepFaceService:
             result = {}
             for en_key, es_key in translation_map.items():
                 if en_key in emotions:
-                    result[es_key] = emotions[en_key]
+                    # Convertir a float estándar de Python para evitar errores de serialización JSON (float32)
+                    result[es_key] = float(emotions[en_key])
                 else:
                     result[es_key] = 0.0
                     
