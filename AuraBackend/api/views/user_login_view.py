@@ -89,6 +89,7 @@ class UserLoginView(APIView):
                         'token': token.key,
                         'user_id': user.pk,
                         'username': user.username,
+                        'role': user.FK_Role.RoleType,
                         'emotion_analysis': emotion_results
                     },
                     status=status.HTTP_200_OK
