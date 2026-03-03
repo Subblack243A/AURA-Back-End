@@ -99,10 +99,11 @@ class AdminReportView(APIView):
 
 class UserSpecificReportView(APIView):
     """
-    Vista para generar reportes específicos por usuario para el Profesional de la Salud.
-    Calcula el promedio de porcentajes de cada emoción en los reconocimientos faciales.
+    Vista para generar reportes específicos por usuario.
+    Accesible por Profesionales de la Salud (cualquier usuario) o Estudiantes (su propio reporte).
+    Calcula el promedio de porcentajes de cada emoción.
     """
-    permission_classes = [IsHealthcareProfessionalRole]
+    permission_classes = [IsNotAdminRole]
 
     @extend_schema(
         summary="Promedio de emociones por usuario",
@@ -130,8 +131,24 @@ class UserSpecificReportView(APIView):
         ]
     )
     def get(self, request, user_id, *args, **kwargs):
-        # 1. Procesar Reconocimientos Faciales (Averages)
-        recognition_records = RecognitionModel.objects.filter(FK_User_id=user_id)
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # Seguridad: Los estudiantes solo pueden ver sus propios datos
+        if not RoleConfirmationService.is_healthcare_professional(request.user) and request.user.id != user_id:
+            return Response(
+                {"error": "You do not have permission to view this report."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Rango de tiempo: Últimos 7 días
+        seven_days_ago = timezone.now() - timedelta(days=7)
+
+        # 1. Procesar Reconocimientos Faciales (Averages de los últimos 7 días)
+        recognition_records = RecognitionModel.objects.filter(
+            FK_User_id=user_id,
+            dateOfRecognition__gte=seven_days_ago
+        )
         
         facial_averages = {}
         facial_count = 0
@@ -151,8 +168,11 @@ class UserSpecificReportView(APIView):
 
             facial_averages = {emotion: total / facial_count for emotion, total in totals.items()}
 
-        # 2. Procesar Registros Manuales (Percentages)
-        manual_records = EmotionRegisterModel.objects.filter(FK_User_id=user_id)
+        # 2. Procesar Registros Manuales (Percentages de los últimos 7 días)
+        manual_records = EmotionRegisterModel.objects.filter(
+            FK_User_id=user_id,
+            EmotionDate__gte=seven_days_ago
+        )
         manual_count = manual_records.count()
         manual_percentages = {}
 
@@ -166,11 +186,6 @@ class UserSpecificReportView(APIView):
                 for item in register_counts
             }
 
-        if not recognition_records.exists() and not manual_records.exists():
-            return Response(
-                {"error": "No records found for this user"},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
         return Response({
             'user_id': user_id,
@@ -254,11 +269,6 @@ class UserTimelineReportView(APIView):
                 'emotion': record.FK_Emotion.Emotion,
             })
 
-        if not facial_timeline and not manual_timeline:
-            return Response(
-                {"error": "No emotional records found for this user in the last 7 days"},
-                status=status.HTTP_404_NOT_FOUND
-            )
 
         return Response({
             'user_id': user_id,
