@@ -168,7 +168,7 @@ class DeepFaceService:
             
             # Ruta base del dataset (ajustada a la estructura del proyecto)
             # El usuario especificó: /home/subblack/Documentos/DevAura/AURA-Back-End/dataset
-            dataset_path = os.path.join(settings.BASE_DIR, '..', 'dataset')
+            dataset_path = os.path.join(settings.BASE_DIR, 'dataset')
             target_dir = os.path.join(dataset_path, dominant_en)
             
             # Asegurar que el directorio existe
