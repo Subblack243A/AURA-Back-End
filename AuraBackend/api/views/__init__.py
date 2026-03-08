@@ -3,3 +3,4 @@ from .user_viewset import UserViewSet
 from .user_login_view import UserLoginView
 from .biometric_view import BiometricRegistrationView, BiometricRecognitionView
 from .emotion_view import EmotionRegisterView
+from .survey_view import MbiSsSurveyView
