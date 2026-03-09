@@ -1,8 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from ..models.tables.survey_model import SurveyModel
 from ..serializers.survey_serializer import MbiSsSurveySerializer
-from ..models import DictionaryRoleModel
+from rest_framework.authentication import TokenAuthentication
 
 class IsStudent(permissions.BasePermission):
     """
@@ -16,7 +17,26 @@ class IsStudent(permissions.BasePermission):
         return request.user.FK_Role_id == 2
 
 class MbiSsSurveyView(APIView):
+    authentication_classes = [TokenAuthentication]
     permission_classes = [permissions.IsAuthenticated, IsStudent]
+
+    def get(self, request, *args, **kwargs):
+        # Si se solicita la fecha de la última respuesta
+        if 'last-response' in request.path:
+            last_survey = SurveyModel.objects.filter(FK_User=request.user, SurveyName='MBI-SS').order_by('-SurveyDate').first()
+            return Response({
+                'last_response_date': last_survey.SurveyDate.strftime('%Y-%m-%d') if last_survey else None
+            })
+        
+        # De lo contrario, devolver historial
+        surveys = SurveyModel.objects.filter(FK_User=request.user, SurveyName='MBI-SS').order_by('-SurveyDate')
+        return Response([
+            {
+                'id': s.ID_Survey,
+                'created_at': s.SurveyDate,
+                'has_burnout': s.SurveyResult.get('has_burnout', False)
+            } for s in surveys
+        ])
 
     def post(self, request, *args, **kwargs):
         serializer = MbiSsSurveySerializer(data=request.data, context={'request': request})
