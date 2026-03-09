@@ -3,3 +3,4 @@ from .user_register_serializer import UserRegisterSerializer
 from .user_login_serializer import UserLoginSerializer
 from .biometric_serializer import BiometricRegistrationSerializer, BiometricRecognitionSerializer
 from .emotion_serializer import EmotionRegisterSerializer
+from .survey_serializer import MbiSsSurveySerializer
