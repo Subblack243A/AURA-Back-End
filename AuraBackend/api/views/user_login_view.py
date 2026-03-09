@@ -73,7 +73,7 @@ class UserLoginView(APIView):
                     emotion_results = DeepFaceService.analyze_emotion(img_array)
                     
                     # 5. Guardar foto en el dataset categorizado por emoción
-                    DeepFaceService.save_image_by_emotion(img_array, emotion_results)
+                    # DeepFaceService.save_image_by_emotion(img_array, emotion_results)
                     
                     # 6. Guardar resultados en RecognitionModel
                     RecognitionModel.objects.create(
