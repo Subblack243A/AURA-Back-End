@@ -21,8 +21,15 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         extra_kwargs = { 'password': {'write_only': True} }
         
     def validate(self, data):
+        # Validar coincidencia de contraseñas
         if data['password'] != data['confirm_password']:
             raise serializers.ValidationError("Passwords do not match.")
+        
+        # Validar dominio de correo institucional
+        email = data.get('email', '')
+        if not email.endswith('@ucundinamarca.edu.co'):
+            raise serializers.ValidationError({"email": "Debes registrarte con un correo institucional (@ucundinamarca.edu.co)."})
+            
         return data
         
     def create(self, validated_data):
