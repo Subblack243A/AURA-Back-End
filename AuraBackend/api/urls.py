@@ -25,7 +25,11 @@ urlpatterns = [
     # Emotion Endpoints
     path('emotion/register/', EmotionRegisterView.as_view(), name='emotion-register'),
     # Survey Endpoints
+    # Survey Endpoints (MBI-SS)
     path('surveys/mbi-ss/', MbiSsSurveyView.as_view(), name='mbi-ss-survey'),
+    path('surveys/mbi-ss/last-response/', MbiSsSurveyView.as_view(), name='mbi-ss-last-response'),
+    path('surveys/mbi-ss/history/', MbiSsSurveyView.as_view(), name='mbi-ss-history'),
+    path('surveys/mbi-ss/submit/', MbiSsSurveyView.as_view(), name='mbi-ss-submit'),
 
     # Report Endpoints
     path('reports/general/', AdminReportView.as_view(), name='report-general'),
