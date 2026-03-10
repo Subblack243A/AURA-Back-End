@@ -58,6 +58,20 @@ class UserLoginFlowTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data['code'], 'FACE_REGISTRATION_REQUIRED')
 
+    def test_login_inactive_user(self):
+        """Test login if the user is inactive (not verified)"""
+        self.user_with_face.is_active = False
+        self.user_with_face.save()
+        
+        data = {
+            'email': 'face@example.com',
+            'password': 'password123'
+        }
+        response = self.client.post(self.login_url, data, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'EMAIL_NOT_VERIFIED')
+
     def test_login_with_face_missing_image(self):
         """Test login si el usuario tiene embedding facial pero no envía imagen"""
         data = {

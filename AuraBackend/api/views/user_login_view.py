@@ -73,7 +73,7 @@ class UserLoginView(APIView):
                     emotion_results = DeepFaceService.analyze_emotion(img_array)
                     
                     # 5. Guardar foto en el dataset categorizado por emoción
-                    DeepFaceService.save_image_by_emotion(img_array, emotion_results)
+                    # DeepFaceService.save_image_by_emotion(img_array, emotion_results)
                     
                     # 6. Guardar resultados en RecognitionModel
                     RecognitionModel.objects.create(
@@ -107,6 +107,16 @@ class UserLoginView(APIView):
                     status=status.HTTP_200_OK
                 )
             else:
+                # Check if user exists but is inactive
+                if user_obj and not user_obj.is_active:
+                    return Response(
+                        {
+                            'error': 'Email no verificado. Por favor verifica tu cuenta.',
+                            'code': 'EMAIL_NOT_VERIFIED'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                
                 return Response(
                     {
                         'error': 'Credenciales erroneas'

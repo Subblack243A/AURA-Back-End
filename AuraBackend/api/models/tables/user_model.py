@@ -14,3 +14,5 @@ class UserModel(AbstractUser):
     FK_HealthcareProfessional = models.ForeignKey('UserModel', on_delete=models.CASCADE, null=True)
     DataAuth = models.BooleanField(default=False)
     Semester = models.IntegerField()
+    otp_code = models.CharField(max_length=6, null=True, blank=True)
+    otp_created_at = models.DateTimeField(null=True, blank=True)
