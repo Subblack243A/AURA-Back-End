@@ -20,12 +20,16 @@ class EmotionRegisterView(generics.CreateAPIView):
 
     def get(self, request, *args, **kwargs):
         """
-        Retorna la fecha de los últimos registros de emoción del usuario para control de ráfagas.
+        Retorna la fecha de los últimos registros de emoción del usuario.
+        - last_registrations: últimos 3, usado para control de ráfagas.
+        - last_manual_registration: el más reciente (o null), usado para el chequeo de 24h.
         """
         from api.models.tables.emotion_register_model import EmotionRegisterModel
         last_regs = EmotionRegisterModel.objects.filter(FK_User=request.user).order_by('-EmotionDate')[:3]
-        
+        last_regs_list = list(last_regs)
+
         return Response({
-            "last_registrations": [reg.EmotionDate for reg in last_regs],
+            "last_registrations": [reg.EmotionDate for reg in last_regs_list],
+            "last_manual_registration": last_regs_list[0].EmotionDate if last_regs_list else None,
             "server_time": timezone.now()
         }, status=status.HTTP_200_OK)

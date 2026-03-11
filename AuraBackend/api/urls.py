@@ -21,9 +21,9 @@ urlpatterns = [
     path('', include(router.urls)),
     # User Endpoints
     path('register/', UserView.as_view(), name='register'),
-    path('verify-otp/', VerifyOTPView.as_view(), name='register'),
-    path('resend-otp/', ResendOTPView.as_view(), name='register'),
-    path('cancel-registration/', CancelRegistrationView.as_view(), name='register'),
+    path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
+    path('resend-otp/', ResendOTPView.as_view(), name='resend-otp'),
+    path('cancel-registration/', CancelRegistrationView.as_view(), name='cancel-registration'),
     path('login/', UserLoginView.as_view(), name='login'),
     # Biometric Endpoints
     path('biometric/register/', BiometricRegistrationView.as_view(), name='biometric-register'),
