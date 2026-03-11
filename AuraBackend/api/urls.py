@@ -6,6 +6,7 @@ from api.views.user_login_view import UserLoginView
 from api.views.biometric_view import BiometricRegistrationView, BiometricRecognitionView
 from api.views.emotion_view import EmotionRegisterView
 from api.views.survey_view import MbiSsSurveyView
+from api.views.user_profile_view import ProfileView, ProfileRequestUpdateView, ProfileUpdateView
 
 from api.views.report_view import AdminReportView, UserSpecificReportView, UserTimelineReportView
 from api.views.dictionary_view import DictionaryProgramListView
@@ -23,8 +24,13 @@ urlpatterns = [
     path('register/', UserView.as_view(), name='register'),
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
     path('resend-otp/', ResendOTPView.as_view(), name='resend-otp'),
-    path('cancel-registration/', CancelRegistrationView.as_view(), name='cancel-registration'),
     path('login/', UserLoginView.as_view(), name='login'),
+    path('cancel-registration/', CancelRegistrationView.as_view(), name='cancel-registration'),
+
+    # Profile Endpoints
+    path('profile/', ProfileView.as_view(), name='profile-get'),
+    path('profile/request-update/', ProfileRequestUpdateView.as_view(), name='profile-request-update'),
+    path('profile/update/', ProfileUpdateView.as_view(), name='profile-update'),
     # Biometric Endpoints
     path('biometric/register/', BiometricRegistrationView.as_view(), name='biometric-register'),
     path('biometric/recognize/', BiometricRecognitionView.as_view(), name='biometric-recognize'),
