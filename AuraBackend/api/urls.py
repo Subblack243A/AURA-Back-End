@@ -8,7 +8,7 @@ from api.views.emotion_view import EmotionRegisterView
 from api.views.survey_view import MbiSsSurveyView
 from api.views.user_profile_view import ProfileView, ProfileRequestUpdateView, ProfileUpdateView
 
-from api.views.report_view import AdminReportView, UserSpecificReportView, UserTimelineReportView
+from api.views.report_view import AdminReportView, UserSpecificReportView, UserTimelineReportView, GeneralSummaryAPIView
 from api.views.dictionary_view import DictionaryProgramListView
 from api.views.user_verify_view import VerifyOTPView
 from api.views.user_resend_otp_view import ResendOTPView
@@ -55,6 +55,7 @@ urlpatterns = [
 
     # Report Endpoints
     path('reports/general/', AdminReportView.as_view(), name='report-general'),
+    path('reports/summary/', GeneralSummaryAPIView.as_view(), name='report-summary'),
     path('reports/user/<int:user_id>/', UserSpecificReportView.as_view(), name='report-user'),
     path('reports/user/<int:user_id>/timeline/', UserTimelineReportView.as_view(), name='report-user-timeline'),
     # Dictionary Endpoints

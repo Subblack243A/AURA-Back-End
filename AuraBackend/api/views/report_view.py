@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.authentication import TokenAuthentication
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from django.db.models import Count
 from ..models.tables.emotion_register_model import EmotionRegisterModel
@@ -280,4 +281,55 @@ class UserTimelineReportView(APIView):
             'user_id': user_id,
             'facial_timeline': facial_timeline,
             'manual_timeline': manual_timeline
+        }, status=status.HTTP_200_OK)
+
+class GeneralSummaryAPIView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserRole]
+
+    def get(self, request, *args, **kwargs):
+        from ..models.tables.user_model import UserModel
+        from ..models.tables.survey_model import SurveyModel
+        from django.db.models import Count
+
+        # 1. Basic Counts
+        total_emotions = EmotionRegisterModel.objects.count()
+        total_recognitions = RecognitionModel.objects.count()
+        total_surveys = SurveyModel.objects.filter(SurveyName='MBI-SS').count()
+        total_users = UserModel.objects.count()
+
+        # 2. Users by Role (excluding 'pendiente' or internal)
+        users_by_role = UserModel.objects.exclude(
+            FK_Role__RoleType__icontains='pendiente'
+        ).values('FK_Role__RoleType').annotate(count=Count('ID_User')).order_by('-count')
+
+        # 3. Users by Program
+        users_by_program = UserModel.objects.values(
+            'FK_Program__Program'
+        ).annotate(count=Count('ID_User')).order_by('-count')
+
+        # 4. Users by Faculty
+        users_by_faculty = UserModel.objects.values(
+            'FK_Faculty__Faculty'
+        ).annotate(count=Count('ID_User')).order_by('-count')
+
+        return Response({
+            'totals': {
+                'emotions': total_emotions,
+                'recognitions': total_recognitions,
+                'surveys': total_surveys,
+                'users': total_users
+            },
+            'by_role': [
+                {'name': item['FK_Role__RoleType'], 'count': item['count']} 
+                for item in users_by_role
+            ],
+            'by_program': [
+                {'name': item['FK_Program__Program'] or 'Sin programa', 'count': item['count']} 
+                for item in users_by_program
+            ],
+            'by_faculty': [
+                {'name': item['FK_Faculty__Faculty'] or 'Sin facultad', 'count': item['count']} 
+                for item in users_by_faculty
+            ]
         }, status=status.HTTP_200_OK)
