@@ -13,6 +13,11 @@ from api.views.dictionary_view import DictionaryProgramListView
 from api.views.user_verify_view import VerifyOTPView
 from api.views.user_resend_otp_view import ResendOTPView
 from api.views.user_cancel_registration_view import CancelRegistrationView
+from api.views.password_recovery_view import (
+    PasswordRecoveryRequestView,
+    PasswordRecoveryVerifyView,
+    PasswordResetView
+)
 
 router = routers.DefaultRouter()
 
@@ -26,6 +31,11 @@ urlpatterns = [
     path('resend-otp/', ResendOTPView.as_view(), name='resend-otp'),
     path('login/', UserLoginView.as_view(), name='login'),
     path('cancel-registration/', CancelRegistrationView.as_view(), name='cancel-registration'),
+
+    # Password Recovery Endpoints
+    path('password-recovery/request/', PasswordRecoveryRequestView.as_view(), name='password-recovery-request'),
+    path('password-recovery/verify/', PasswordRecoveryVerifyView.as_view(), name='password-recovery-verify'),
+    path('password-recovery/reset/', PasswordResetView.as_view(), name='password-recovery-reset'),
 
     # Profile Endpoints
     path('profile/', ProfileView.as_view(), name='profile-get'),
