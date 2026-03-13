@@ -37,8 +37,34 @@ class UserLoginView(APIView):
             
             # Se hace autenticacion
             user = authenticate(request, username=username, password=password)
-            
             if user is not None:
+                # 0. Check if account is deactivated (Role ID 5)
+                if user.FK_Role_id == 5:
+                    # Get admin email for contact (using first superuser or generic)
+                    admin_user = UserModel.objects.filter(is_superuser=True).first()
+                    admin_email = admin_user.email if admin_user else "admin@aura.com"
+                    
+                    return Response(
+                        {
+                            'error': 'Tu cuenta ha sido desactivada.',
+                            'code': 'ACCOUNT_DEACTIVATED',
+                            'admin_email': admin_email,
+                            'message': f'Para reactivar tu cuenta, por favor contacta al administrador en: {admin_email}'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+                # 0.1 Check if account is still pending (Role ID 1)
+                if user.FK_Role_id == 1:
+                    return Response(
+                        {
+                            'error': 'Tu cuenta está en estado pendiente de aprobación.',
+                            'code': 'ACCOUNT_PENDING',
+                            'message': 'Su estado actual es pendiente. Se le notificará al correo cuando su cuenta sea activada.'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
                 # Check if user is an Admin to bypass biometric check
                 is_admin = user.FK_Role.RoleType == 'Administrador'
 
