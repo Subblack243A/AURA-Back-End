@@ -313,6 +313,46 @@ class GeneralSummaryAPIView(APIView):
             'FK_Faculty__Faculty'
         ).annotate(count=Count('ID_User')).order_by('-count')
 
+        # 5. Detailed Emotion and Survey Counts (Reusing logic from AdminReportView)
+        # 5a. Manual Emotions
+        register_counts = EmotionRegisterModel.objects.values('FK_Emotion__Emotion').annotate(
+            count=Count('FK_Emotion')
+        ).order_by('FK_Emotion__Emotion')
+        manual_emotions = {item['FK_Emotion__Emotion'].capitalize(): item['count'] for item in register_counts}
+
+        # 5b. Facial Emotions
+        recognition_records = RecognitionModel.objects.all()
+        facial_emotions = {
+            'Feliz': 0, 'Triste': 0, 'Enojado': 0, 'Sorpresa': 0, 
+            'Miedo': 0, 'Disgusto': 0, 'Neutral': 0
+        }
+        emotion_map = {
+            'happy': 'Feliz', 'sad': 'Triste', 'angry': 'Enojado', 
+            'surprise': 'Sorpresa', 'fear': 'Miedo', 'disgust': 'Disgusto', 
+            'neutral': 'Neutral'
+        }
+        for record in recognition_records:
+            results = record.RecognitionResults
+            if results and isinstance(results, dict):
+                try:
+                    dominant_emotion_en = max(results, key=results.get)
+                    dominant_emotion_es = emotion_map.get(dominant_emotion_en.lower(), dominant_emotion_en.capitalize())
+                    if dominant_emotion_es in facial_emotions:
+                        facial_emotions[dominant_emotion_es] += 1
+                    else:
+                        facial_emotions[dominant_emotion_es] = facial_emotions.get(dominant_emotion_es, 0) + 1
+                except (ValueError, TypeError):
+                    continue
+
+        # 5c. Survey Results
+        mbi_records = SurveyModel.objects.filter(SurveyName='MBI-SS')
+        survey_results = {'Con Agotamiento': 0, 'Sin Agotamiento': 0}
+        for record in mbi_records:
+            if record.SurveyResult.get('has_burnout', False):
+                survey_results['Con Agotamiento'] += 1
+            else:
+                survey_results['Sin Agotamiento'] += 1
+
         return Response({
             'totals': {
                 'emotions': total_emotions,
@@ -331,5 +371,8 @@ class GeneralSummaryAPIView(APIView):
             'by_faculty': [
                 {'name': item['FK_Faculty__Faculty'] or 'Sin facultad', 'count': item['count']} 
                 for item in users_by_faculty
-            ]
+            ],
+            'manual_emotions': [{'name': k, 'count': v} for k, v in manual_emotions.items()],
+            'facial_emotions': [{'name': k, 'count': v} for k, v in facial_emotions.items()],
+            'survey_results': [{'name': k, 'count': v} for k, v in survey_results.items()]
         }, status=status.HTTP_200_OK)
