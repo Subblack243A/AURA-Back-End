@@ -18,6 +18,7 @@ from api.views.password_recovery_view import (
     PasswordRecoveryVerifyView,
     PasswordResetView
 )
+from api.views.admin_users_view import UserListAPIView, UserApproveAPIView, AdminUserDetailAPIView
 
 router = routers.DefaultRouter()
 
@@ -60,4 +61,9 @@ urlpatterns = [
     path('reports/user/<int:user_id>/timeline/', UserTimelineReportView.as_view(), name='report-user-timeline'),
     # Dictionary Endpoints
     path('programs/', DictionaryProgramListView.as_view(), name='program-list'),
+
+    # Admin User Management Endpoints
+    path('admin/users/', UserListAPIView.as_view(), name='admin-user-list'),
+    path('admin/users/<int:pk>/', AdminUserDetailAPIView.as_view(), name='admin-user-detail'),
+    path('admin/users/<int:pk>/approve/', UserApproveAPIView.as_view(), name='admin-user-approve'),
 ]
