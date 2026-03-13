@@ -37,62 +37,89 @@ class UserLoginView(APIView):
             
             # Se hace autenticacion
             user = authenticate(request, username=username, password=password)
-            
             if user is not None:
-                # 1. Verificar si se envió la imagen para análisis de emociones
-                if 'image' not in request.FILES:
+                # 0. Check if account is deactivated (Role ID 5)
+                if user.FK_Role_id == 5:
+                    # Get admin email for contact (using first superuser or generic)
+                    admin_user = UserModel.objects.filter(is_superuser=True).first()
+                    admin_email = admin_user.email if admin_user else "admin@aura.com"
+                    
+                    return Response(
+                        {
+                            'error': 'Tu cuenta ha sido desactivada.',
+                            'code': 'ACCOUNT_DEACTIVATED',
+                            'admin_email': admin_email,
+                            'message': f'Para reactivar tu cuenta, por favor contacta al administrador en: {admin_email}'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+                # 0.1 Check if account is still pending (Role ID 1)
+                if user.FK_Role_id == 1:
+                    return Response(
+                        {
+                            'error': 'Tu cuenta está en estado pendiente de aprobación.',
+                            'code': 'ACCOUNT_PENDING',
+                            'message': 'Su estado actual es pendiente. Se le notificará al correo cuando su cuenta sea activada.'
+                        },
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
+                # Check if user is an Admin to bypass biometric check
+                is_admin = user.FK_Role.RoleType == 'Administrador'
+
+                # 1. Verificar si se envió la imagen para análisis de emociones (Skip for Admin)
+                if not is_admin and 'image' not in request.FILES:
                     return Response(
                         {'error': 'Image file is required for emotion analysis'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-                try:
-                    # 2. Procesar imagen para obtener embedding
-                    image_file = request.FILES['image']
-                    img_array = DeepFaceService.process_image(image_file)
-                    new_embedding = DeepFaceService.get_embedding(img_array)
-                    
-                    # 3. Comprobar si el usuario ya tiene un rostro registrado
-                    # Usar "is None" explícitamente para evitar ambigüedad de array
-                    if user.Face is None:
-                        # Registro inicial: Guardar el embedding
-                        user.Face = new_embedding
-                        user.save()
-                        print(f"DEBUG: Initial face registration for user {user.username}")
-                    else:
-                        # Verificación obligatoria
-                        is_verified = DeepFaceService.verify_face(new_embedding, user.Face)
-                        if not is_verified:
-                            return Response(
-                                {'error': 'Autenticación facial fallida. Rostro no reconocido.'},
-                                status=status.HTTP_401_UNAUTHORIZED
-                            )
-                        print(f"DEBUG: Face verified successfully for user {user.username}")
+                emotion_results = None
+                if not is_admin:
+                    try:
+                        # 2. Procesar imagen para obtener embedding
+                        image_file = request.FILES['image']
+                        img_array = DeepFaceService.process_image(image_file)
+                        new_embedding = DeepFaceService.get_embedding(img_array)
+                        
+                        # 3. Comprobar si el usuario ya tiene un rostro registrado
+                        if user.Face is None:
+                            # Registro inicial: Guardar el embedding
+                            user.Face = new_embedding
+                            user.save()
+                            print(f"DEBUG: Initial face registration for user {user.username}")
+                        else:
+                            # Verificación obligatoria
+                            is_verified = DeepFaceService.verify_face(new_embedding, user.Face)
+                            if not is_verified:
+                                return Response(
+                                    {'error': 'Autenticación facial fallida. Rostro no reconocido.'},
+                                    status=status.HTTP_401_UNAUTHORIZED
+                                )
+                            print(f"DEBUG: Face verified successfully for user {user.username}")
 
-                    # 4. Una vez verificado (o registrado), ahora sí analizar emociones
-                    emotion_results = DeepFaceService.analyze_emotion(img_array)
-                    
-                    # 5. Guardar foto en el dataset categorizado por emoción
-                    # DeepFaceService.save_image_by_emotion(img_array, emotion_results)
-                    
-                    # 6. Guardar resultados en RecognitionModel
-                    RecognitionModel.objects.create(
-                        RecognitionResults=emotion_results,
-                        FK_User=user
-                    )
-                    
-                except ValidationError as e:
-                    return Response(
-                        {'error': str(e)},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-                except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    return Response(
-                        {'error': f'Error processing emotion analysis: {str(e)}'},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                    )
+                        # 4. Una vez verificado (o registrado), ahora sí analizar emociones
+                        emotion_results = DeepFaceService.analyze_emotion(img_array)
+                        
+                        # 6. Guardar resultados en RecognitionModel
+                        RecognitionModel.objects.create(
+                            RecognitionResults=emotion_results,
+                            FK_User=user
+                        )
+                        
+                    except ValidationError as e:
+                        return Response(
+                            {'error': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        return Response(
+                            {'error': f'Error processing emotion analysis: {str(e)}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                        )
                 
                 # 7. Generar token y respuesta exitosa
                 token, created = Token.objects.get_or_create(user=user)

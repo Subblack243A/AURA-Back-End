@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, permissions
+from rest_framework.authentication import TokenAuthentication
 from drf_spectacular.utils import extend_schema, OpenApiExample
 from django.db.models import Count
 from ..models.tables.emotion_register_model import EmotionRegisterModel
@@ -58,43 +59,60 @@ class AdminReportView(APIView):
         ]
     )
     def get(self, request, *args, **kwargs):
+        from ..models.tables.survey_model import SurveyModel
+
         # 1. Conteos de EmotionRegisterModel (Registros Manuales)
-        # Agrupamos por el nombre de la emoción en el diccionario
         register_counts = EmotionRegisterModel.objects.values('FK_Emotion__Emotion').annotate(
             count=Count('FK_Emotion')
         ).order_by('FK_Emotion__Emotion')
 
-        manual_data = {item['FK_Emotion__Emotion']: item['count'] for item in register_counts}
+        # Capitalize keys for frontend consistency
+        manual_data = {item['FK_Emotion__Emotion'].capitalize(): item['count'] for item in register_counts}
 
         # 2. Conteos de RecognitionModel (Reconocimientos Faciales)
-        # Procesamos la información del JSONField para extraer la emoción dominante (valor máximo)
         recognition_records = RecognitionModel.objects.all()
         
-        # Inicializamos el diccionario de resultados con las 7 emociones estándar
+        # Standardized emotions in Spanish, capitalized
         facial_data = {
-            'feliz': 0, 'triste': 0, 'enojado': 0, 'sorpresa': 0, 
-            'miedo': 0, 'disgusto': 0, 'neutral': 0
+            'Feliz': 0, 'Triste': 0, 'Enojado': 0, 'Sorpresa': 0, 
+            'Miedo': 0, 'Disgusto': 0, 'Neutral': 0
+        }
+
+        # Map English keys from DeepFace to Spanish capitalized labels
+        emotion_map = {
+            'happy': 'Feliz', 'sad': 'Triste', 'angry': 'Enojado', 
+            'surprise': 'Sorpresa', 'fear': 'Miedo', 'disgust': 'Disgusto', 
+            'neutral': 'Neutral'
         }
 
         for record in recognition_records:
             results = record.RecognitionResults
             if results and isinstance(results, dict):
                 try:
-                    # Obtenemos la llave (emoción) que tenga el valor numérico más alto
-                    dominant_emotion = max(results, key=results.get)
-                    if dominant_emotion in facial_data:
-                        facial_data[dominant_emotion] += 1
+                    dominant_emotion_en = max(results, key=results.get)
+                    dominant_emotion_es = emotion_map.get(dominant_emotion_en.lower(), dominant_emotion_en.capitalize())
+                    
+                    if dominant_emotion_es in facial_data:
+                        facial_data[dominant_emotion_es] += 1
                     else:
-                        # Si por alguna razón hay una emoción no contemplada inicialmente
-                        facial_data[dominant_emotion] = facial_data.get(dominant_emotion, 0) + 1
+                        facial_data[dominant_emotion_es] = facial_data.get(dominant_emotion_es, 0) + 1
                 except (ValueError, TypeError):
-                    # En caso de que el diccionario esté vacío o los valores no sean comparables
                     continue
 
+        # 3. Conteos de MBI-SS (Encuestas de Agotamiento)
+        mbi_records = SurveyModel.objects.filter(SurveyName='MBI-SS')
+        mbi_counts = {'Con Agotamiento': 0, 'Sin Agotamiento': 0}
+        for record in mbi_records:
+            if record.SurveyResult.get('has_burnout', False):
+                mbi_counts['Con Agotamiento'] += 1
+            else:
+                mbi_counts['Sin Agotamiento'] += 1
+
         return Response({
-            'report_name': 'Reporte General de Emociones',
+            'report_name': 'Reporte General de Emociones y Bienestar',
             'manual_registrations': manual_data,
-            'facial_recognition_dominance': facial_data
+            'facial_recognition_dominance': facial_data,
+            'burnout_survey_results': mbi_counts
         }, status=status.HTTP_200_OK)
 
 class UserSpecificReportView(APIView):
@@ -263,4 +281,98 @@ class UserTimelineReportView(APIView):
             'user_id': user_id,
             'facial_timeline': facial_timeline,
             'manual_timeline': manual_timeline
+        }, status=status.HTTP_200_OK)
+
+class GeneralSummaryAPIView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserRole]
+
+    def get(self, request, *args, **kwargs):
+        from ..models.tables.user_model import UserModel
+        from ..models.tables.survey_model import SurveyModel
+        from django.db.models import Count
+
+        # 1. Basic Counts
+        total_emotions = EmotionRegisterModel.objects.count()
+        total_recognitions = RecognitionModel.objects.count()
+        total_surveys = SurveyModel.objects.filter(SurveyName='MBI-SS').count()
+        total_users = UserModel.objects.count()
+
+        # 2. Users by Role (excluding 'pendiente' or internal)
+        users_by_role = UserModel.objects.exclude(
+            FK_Role__RoleType__icontains='pendiente'
+        ).values('FK_Role__RoleType').annotate(count=Count('ID_User')).order_by('-count')
+
+        # 3. Users by Program
+        users_by_program = UserModel.objects.values(
+            'FK_Program__Program'
+        ).annotate(count=Count('ID_User')).order_by('-count')
+
+        # 4. Users by Faculty
+        users_by_faculty = UserModel.objects.values(
+            'FK_Faculty__Faculty'
+        ).annotate(count=Count('ID_User')).order_by('-count')
+
+        # 5. Detailed Emotion and Survey Counts (Reusing logic from AdminReportView)
+        # 5a. Manual Emotions
+        register_counts = EmotionRegisterModel.objects.values('FK_Emotion__Emotion').annotate(
+            count=Count('FK_Emotion')
+        ).order_by('FK_Emotion__Emotion')
+        manual_emotions = {item['FK_Emotion__Emotion'].capitalize(): item['count'] for item in register_counts}
+
+        # 5b. Facial Emotions
+        recognition_records = RecognitionModel.objects.all()
+        facial_emotions = {
+            'Feliz': 0, 'Triste': 0, 'Enojado': 0, 'Sorpresa': 0, 
+            'Miedo': 0, 'Disgusto': 0, 'Neutral': 0
+        }
+        emotion_map = {
+            'happy': 'Feliz', 'sad': 'Triste', 'angry': 'Enojado', 
+            'surprise': 'Sorpresa', 'fear': 'Miedo', 'disgust': 'Disgusto', 
+            'neutral': 'Neutral'
+        }
+        for record in recognition_records:
+            results = record.RecognitionResults
+            if results and isinstance(results, dict):
+                try:
+                    dominant_emotion_en = max(results, key=results.get)
+                    dominant_emotion_es = emotion_map.get(dominant_emotion_en.lower(), dominant_emotion_en.capitalize())
+                    if dominant_emotion_es in facial_emotions:
+                        facial_emotions[dominant_emotion_es] += 1
+                    else:
+                        facial_emotions[dominant_emotion_es] = facial_emotions.get(dominant_emotion_es, 0) + 1
+                except (ValueError, TypeError):
+                    continue
+
+        # 5c. Survey Results
+        mbi_records = SurveyModel.objects.filter(SurveyName='MBI-SS')
+        survey_results = {'Con Agotamiento': 0, 'Sin Agotamiento': 0}
+        for record in mbi_records:
+            if record.SurveyResult.get('has_burnout', False):
+                survey_results['Con Agotamiento'] += 1
+            else:
+                survey_results['Sin Agotamiento'] += 1
+
+        return Response({
+            'totals': {
+                'emotions': total_emotions,
+                'recognitions': total_recognitions,
+                'surveys': total_surveys,
+                'users': total_users
+            },
+            'by_role': [
+                {'name': item['FK_Role__RoleType'], 'count': item['count']} 
+                for item in users_by_role
+            ],
+            'by_program': [
+                {'name': item['FK_Program__Program'] or 'Sin programa', 'count': item['count']} 
+                for item in users_by_program
+            ],
+            'by_faculty': [
+                {'name': item['FK_Faculty__Faculty'] or 'Sin facultad', 'count': item['count']} 
+                for item in users_by_faculty
+            ],
+            'manual_emotions': [{'name': k, 'count': v} for k, v in manual_emotions.items()],
+            'facial_emotions': [{'name': k, 'count': v} for k, v in facial_emotions.items()],
+            'survey_results': [{'name': k, 'count': v} for k, v in survey_results.items()]
         }, status=status.HTTP_200_OK)
